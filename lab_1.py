@@ -1,3 +1,4 @@
+import math
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
@@ -10,8 +11,8 @@ import signal
 JOINT_NAME = "leg_front_l_1"
 ####
 ####
-KP = 0.0  # YOUR KP VALUE
-KD = 0.0  # YOUR KD VALUE
+KP = 2.0
+KD = 3.0
 ####
 ####
 LOOP_RATE = 200  # Hz
@@ -42,19 +43,30 @@ class JointStateSubscriber(Node):
         self.create_timer(1.0 / LOOP_RATE, self.control_loop)
 
     def get_target_joint_info(self):
-        ####
-        #### YOUR CODE HERE
-        ####
-
-        # target_joint_pos, target_joint_vel
-        return 0, 0
+        cycle_time = 2.0  # seconds
+        if time.time()%cycle_time*2 < cycle_time:
+            # Move to +0.5 radians
+            return math.radians(0), math.radians(0)
+        else: 
+            return math.radians(180), math.radians(90)
+        
 
     def calculate_torque(self, joint_pos, joint_vel, target_joint_pos, target_joint_vel):
-        ####
-        #### YOUR CODE HERE
-        ####
+        # Bang-bang controller
+        if joint_pos < target_joint_pos:
+            return MAX_TORQUE
+        elif joint_pos > target_joint_pos:
+            return -MAX_TORQUE
+        else:
+            return 0
         
-        return 0.0
+        '''P Controller
+        return KP * (self.target_joint_pos - joint_pos)
+        '''
+
+        ''' PD Controller
+        return KP * (self.target_joint_pos - joint_pos) + KD * (self.target_joint_vel - joint_vel)
+        '''
 
     def print_info(self):
         """Print joint information every 2 control loops"""
