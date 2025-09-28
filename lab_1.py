@@ -6,12 +6,13 @@ import numpy as np
 import time
 from collections import deque
 import signal
+import math
 
 JOINT_NAME = "leg_front_l_1"
 ####
 ####
-KP = 0.0  # YOUR KP VALUE
-KD = 0.0  # YOUR KD VALUE
+KP = 2.0  # YOUR KP VALUE
+KD = 0.1  # YOUR KD VALUE
 ####
 ####
 LOOP_RATE = 200  # Hz
@@ -36,25 +37,54 @@ class JointStateSubscriber(Node):
         self.joint_vel = 0
         self.target_joint_pos = 0
         self.target_joint_vel = 0
+        self.delay_buffer_size = int(100*LOOP_RATE)
+        self.angle_buffer = deque(maxlen=self.delay_buffer_size)
+        self.velocity_buffer = deque(maxlen=self.delay_buffer_size)
         # self.torque_history = deque(maxlen=DELAY)
 
         # Create a timer to run control_loop at the specified frequency
         self.create_timer(1.0 / LOOP_RATE, self.control_loop)
 
     def get_target_joint_info(self):
-        ####
-        #### YOUR CODE HERE
-        ####
+        '''
+        Returns a tuple with the target position and target velocity (in radians and radians per second).
 
-        # target_joint_pos, target_joint_vel
-        return 0, 0
+        Currently something arbitrary for testing.
+        '''
+        
+        """cycle_time = 2
+
+        if time.time() % cycle_time * 2 < cycle_time:
+            return math.radians(0), math.radians(0)
+        else:
+            return math.radians(180), math.radians(90)"""
+
+        """ return 0,0"""
+
+        """ PERIODIC MOTION"""
+        frequency =10
+        return math.sin(time.time() * 2 * math.pi * frequency), 0
+        
 
     def calculate_torque(self, joint_pos, joint_vel, target_joint_pos, target_joint_vel):
-        ####
-        #### YOUR CODE HERE
-        ####
+        """ BANG-BANG CONTROL
+        if self.target_joint_pos > joint_pos:
+            return MAX_TORQUE
+        elif self.target_joint_pos < joint_pos:
+            return -MAX_TORQUE
+        else:
+            return 0  # Doesn't really matter b|c real floats are basically never equal but still here
+        """
+
         
-        return 0.0
+        """P CONTROL"""
+        """return KP * (self.target_joint_pos - joint_pos)"""
+        
+
+        """ PD CONTROL"""
+        return KP * (self.target_joint_pos - joint_pos) + KD * (self.target_joint_vel - joint_vel)
+        
+        
 
     def print_info(self):
         """Print joint information every 2 control loops"""
@@ -78,6 +108,10 @@ class JointStateSubscriber(Node):
 
     def control_loop(self):
         """Control control loop to calculate and publish torque commands"""
+        self.angle_buffer.append(self.joint_pos)
+        self.velocity_buffer.append(self.joint_vel)
+        joint_pos = self.angle_buffer[0]
+        joint_vel = self.velocity_buffer[0]
         self.target_joint_pos, self.target_joint_vel = self.get_target_joint_info()
         self.calculated_torque = self.calculate_torque(
             self.joint_pos, self.joint_vel, self.target_joint_pos, self.target_joint_vel
